@@ -9,7 +9,7 @@ repeat loci, pathogenic loci, and their potential biological impact.
 
 For a detailed description of all datasets, file formats, sources, and processing steps, see:
 
-- [Data Description](data_description.md)
+- [Data Description](data/data_description.md)
 
 ### Source Code
 
