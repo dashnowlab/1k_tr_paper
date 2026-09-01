@@ -16,13 +16,13 @@ For a detailed description of all datasets, file formats, sources, and processin
 
 Scripts and workflows used for all analyses.
 
-[Analysis Documentation](src/README.md)
+- [Analysis Documentation](src/README.md)
 
 ### Results
 
 Figures, tables, and analysis summaries.
 
-[Results Documentation](results/README.md)
+- [Results Documentation](results/README.md)
 
 ---
 
