@@ -1,0 +1,150 @@
+/home/ealiyev@xsede.org/.bashrc: line 13: /home/ealiyev@xsede.org/.cargo/env: No such file or directory
+Welcome to University of Colorado Boulder Research Computing!
+
+Full documentation is available in our user guide at
+https://www.rc.colorado.edu/support/user-guide. If you have a question
+that's not answered there, contact us at rc-help@colorado.edu.
+
+A number of directories have been created for you already:
+
+* `/home/$USER`, your home directory
+* `/projects/$USER`, your project directory
+ 
+Run the command `module avail` to see a list of available software.
+
+To prevent this README from being displayed at login, edit your
+`.bash_profile` or `.login` files.
+/home/ealiyev@xsede.org/.bash_profile: line 26: /home/ealiyev@xsede.org/.cargo/env: No such file or directory
+ATaRVa - Analysis of Tandem Repeat Variants
+Sowpati Lab
+
+help False
+regions /pl/active/dashnowlab/projects/TR-benchmarking/catalogs/benchmark-catalog-v2.atarva.bed.gz
+vcfs ['/pl/active/dashnowlab/work/ealiyev/Sandbox/HPRC_atarva_40k_merged/merged/atarva_vcfs_compressed.txt']
+fasta /pl/active/dashnowlab/data/ref-genomes/human_GRCh38_no_alt_analysis_set.fasta
+contigs None
+outname /pl/active/dashnowlab/work/ealiyev/Sandbox/HPRC_atarva_40k_merged/merged/HPRC_ATaRVa_multisample.vcf
+threads 4
+
+
+Reader thread =  0
+Inside reader0 = length of contig = 31
+Shape =  (3488, 10)
+Shape =  (1512, 10)
+Shape =  (534, 10)
+Continuing due to no chr chr11 in 1
+Continuing due to no chr chr11 in 2
+Continuing due to no chr chr11 in 4
+Shape =  (2050, 10)
+Continuing due to no chr chr12 in 1
+Continuing due to no chr chr12 in 2
+Continuing due to no chr chr12 in 4
+Shape =  (2111, 10)
+Continuing due to no chr chr13 in 1
+Continuing due to no chr chr13 in 2
+Continuing due to no chr chr13 in 4
+Shape =  (305, 10)
+Continuing due to no chr chr13 in 1
+Continuing due to no chr chr13 in 2
+Continuing due to no chr chr13 in 4
+Shape =  (997, 10)
+Continuing due to no chr chr14 in 1
+Continuing due to no chr chr14 in 2
+Continuing due to no chr chr14 in 4
+Shape =  (1356, 10)
+Continuing due to no chr chr15 in 1
+Continuing due to no chr chr15 in 2
+Continuing due to no chr chr15 in 4
+Shape =  (1258, 10)
+Continuing due to no chr chr16 in 1
+Continuing due to no chr chr16 in 2
+Continuing due to no chr chr16 in 4
+Shape =  (1389, 10)
+Continuing due to no chr chr16 in 1
+Continuing due to no chr chr16 in 2
+Continuing due to no chr chr16 in 4
+Shape =  (113, 10)
+Continuing due to no chr chr17 in 1
+Continuing due to no chr chr17 in 2
+Continuing due to no chr chr17 in 4
+Shape =  (1501, 10)
+Continuing due to no chr chr18 in 1
+Continuing due to no chr chr18 in 2
+Continuing due to no chr chr18 in 4
+Shape =  (1090, 10)
+Continuing due to no chr chr19 in 1
+Continuing due to no chr chr19 in 2
+Continuing due to no chr chr19 in 4
+Shape =  (1302, 10)
+Continuing due to no chr chr2 in 1
+Continuing due to no chr chr2 in 2
+Continuing due to no chr chr2 in 4
+Shape =  (994, 10)
+Continuing due to no chr chr2 in 1
+Continuing due to no chr chr2 in 2
+Continuing due to no chr chr2 in 4
+Shape =  (2529, 10)
+Continuing due to no chr chr20 in 1
+Continuing due to no chr chr20 in 2
+Continuing due to no chr chr20 in 4
+Shape =  (992, 10)
+Continuing due to no chr chr21 in 1
+Continuing due to no chr chr21 in 2
+Continuing due to no chr chr21 in 4
+Shape =  (693, 10)
+Continuing due to no chr chr22 in 1
+Continuing due to no chr chr22 in 2
+Continuing due to no chr chr22 in 4
+Shape =  (750, 10)
+Continuing due to no chr chr3 in 1
+Continuing due to no chr chr3 in 2
+Continuing due to no chr chr3 in 4
+Shape =  (36, 10)
+Continuing due to no chr chr3 in 1
+Continuing due to no chr chr3 in 2
+Continuing due to no chr chr3 in 4
+Shape =  (2772, 10)
+Continuing due to no chr chr4 in 1
+Continuing due to no chr chr4 in 2
+Continuing due to no chr chr4 in 4
+Shape =  (2228, 10)
+Continuing due to no chr chr4 in 1
+Continuing due to no chr chr4 in 2
+Continuing due to no chr chr4 in 4
+Shape =  (473, 10)
+Continuing due to no chr chr5 in 1
+Continuing due to no chr chr5 in 2
+Continuing due to no chr chr5 in 4
+Shape =  (2421, 10)
+Continuing due to no chr chr6 in 1
+Continuing due to no chr chr6 in 2
+Continuing due to no chr chr6 in 4
+Shape =  (2106, 10)
+Continuing due to no chr chr6 in 1
+Continuing due to no chr chr6 in 2
+Continuing due to no chr chr6 in 4
+Shape =  (418, 10)
+Continuing due to no chr chr7 in 1
+Continuing due to no chr chr7 in 2
+Continuing due to no chr chr7 in 4
+Shape =  (2628, 10)
+Continuing due to no chr chr8 in 1
+Continuing due to no chr chr8 in 2
+Continuing due to no chr chr8 in 4
+Shape =  (2226, 10)
+Continuing due to no chr chr9 in 1
+Continuing due to no chr chr9 in 2
+Continuing due to no chr chr9 in 4
+Shape =  (1753, 10)
+Continuing due to no chr chrX in 1
+Continuing due to no chr chrX in 2
+Continuing due to no chr chrX in 4
+Shape =  (899, 10)
+Continuing due to no chr chrY in 1
+Continuing due to no chr chrY in 2
+Continuing due to no chr chrY in 4
+Shape =  (85, 10)
+Concatenating thread outputs!
+Concatenation completed!! ^_^
+CPU time: 67.39155333198141 seconds
+Done: /pl/active/dashnowlab/work/ealiyev/Sandbox/HPRC_atarva_40k_merged/merged/HPRC_ATaRVa_multisample.vcf
