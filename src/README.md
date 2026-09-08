@@ -1,4 +1,4 @@
-# ATaRVa HPRC Workflow
+# ATaRVa Workflow
 
 This directory contains scripts and input lists used to genotype tandem repeats with **ATaRVa** and merge per-sample ATaRVa VCFs into a multisample VCF.
 
