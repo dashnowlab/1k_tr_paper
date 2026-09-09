@@ -1,0 +1,5 @@
+/pl/active/dashnowlab/work/ealiyev/Sandbox/HPRC_atarva_40k_merged/output/HG02809_ONT.atarva.vcf
+/pl/active/dashnowlab/work/ealiyev/Sandbox/HPRC_atarva_40k_merged/output/HG04228_ONT.atarva.vcf
+/pl/active/dashnowlab/work/ealiyev/Sandbox/HPRC_atarva_40k_merged/output/HG00232_ONT.atarva.vcf
+/pl/active/dashnowlab/work/ealiyev/Sandbox/HPRC_atarva_40k_merged/output/HG00673_ONT.atarva.vcf
+/pl/active/dashnowlab/work/ealiyev/Sandbox/HPRC_atarva_40k_merged/output/HG00253_ONT.atarva.vcf
