@@ -4,33 +4,67 @@ from datetime import date
 import time
 import pandas as pd
 import numpy as np
+import sys
+import re
 import bioframe as bf
 
 """
-Author: GA
-Description: filters out duplicat regions in catalog
-             based on frequency, purity, & motif size
-Example: python filter_duplicates <catalog_path> --format atarva
-python filter_duplicates.py /projects/garner1@xsede.org/dashnow_lab/1k_tr_paper/data/local_data/TR_catalog.5599658_loci.20260123_034640.tsv.gz --format atarva
+Author     : GA
+Description: filters out duplicate regions in catalog
+             based on coordinate size, purity, frequency, & motif size
+Outputs    : merged bed file based on format, 
+             merged tsv extra columns containing merge information:
+                merged_from : original locus IDs merged into this record
+                other_motifs: motifs of merged loci not chosen as representative
+             column-reduced input catalog with new column containing unique ids
+                _orig_id: unique int identifier (match up with merged_from in merged tv)
+Example    : python filter_duplicates <catalog_path> <output dir> --format atarva
 """
 
-def merge_key(row):
+def mergeKey(row):
     return (
         -(row["end_1based"] - row["start_0based"]), # grab the longest loci
-        -row.get("ReferenceRepeatPurity", 0), # then get the nighest purity
-        -row.get("MotifSize", 0), # larger motif size
-        row["_tiebreak"]
+        -getSafe(row, "ReferenceRepeatPurity", 0), # then get the nighest purity
+        -convertFreq(getSafe(row, "AlleleFrequenciesFromIllumina174k")), # higher population frequency
+        getSafe(row, "MotifSize", 0), # smaller motif size
+        row["_tiebreak"] # if all above are tied, then choose random
     )
 
 
+def getSafe(row, col, default=""):
+    val = row.get(col, default)
+    return default if pd.isna(val) else val
+
+
+def convertFreq(row):
+
+    if row:
+        freq_list = row.split(",")
+
+        freq_dict = {}
+        for freq in freq_list:
+            fs = freq.split(":")
+            freq_dict[fs[0]] = int(fs[1])
+
+        chosen_freq = max(freq_dict, key=freq_dict.get)
+        chosen_freq = int(re.sub(r"\D", "", chosen_freq)) # strip all non-digits and convert to int
+
+    else:
+        chosen_freq = 0
+
+    return chosen_freq
+
+
+def moveColToEnd(df, col):
+    return df[[c for c in df.columns if c != col] + [col]]
+
+
 def ToAtarva(cdf: pd.DataFrame, out_path: str | Path):
+    cols = [*cdf.columns[:3], "ReferenceMotif", "MotifSize"]
 
-    cols = [*cdf.columns[1:4], "ReferenceMotif", "MotifSize", "merged_from"]
-    fdf = cdf[cols]
-    fdf.columns = ["#CHROM", "START", "END", "MOTIF", "MOTIF_LEN", "merged_from"]
+    fdf = cdf[cols].copy()
 
-    print(fdf["END"])
-
+    fdf.columns = ["#CHROM", "START", "END", "MOTIF", "MOTIF_LEN"]
     fdf.to_csv(out_path, index=False, sep="\t", compression="gzip")
 
     return fdf.shape
@@ -90,9 +124,10 @@ def mergeOverlaps(cdf: pd.DataFrame, min_dist = 0, seed=42):
     # set seed for tiebeaker randomness
     rng = np.random.default_rng(seed=seed)  
     cdf["_tiebreak"] = rng.random(len(cdf))
-    cols = tuple(cdf.columns[:3])
+    coord_cols = tuple(cdf.columns[:3])
 
-    clustered = bf.cluster(cdf, cols=cols, min_dist=min_dist)
+    # run bioframe overlap clustering
+    clustered = bf.cluster(cdf, cols=coord_cols, min_dist=min_dist)
 
     # collect all member ids per cluster
     merged_ids = (
@@ -101,29 +136,56 @@ def mergeOverlaps(cdf: pd.DataFrame, min_dist = 0, seed=42):
         .rename("merged_from")
     )
 
-    # apply merge_key criteria to determine rank within each cluster
-    clustered["_rank"] = clustered.apply(merge_key, axis=1)
+    # apply mergeKey criteria to determine rank within each cluster
+    clustered["_rank"] = clustered.apply(mergeKey, axis=1)
     clustered = clustered.sort_values(["cluster", "_rank"])
-    representative = clustered.groupby("cluster", as_index=False).first()
+    rep_df = clustered.groupby("cluster", as_index=False).first()
 
-    print(clustered["cluster"].isna().sum())
+    # add a column containing all of the OTHER motifs from the different merged regions
+    winner_idx = clustered.groupby("cluster")["_rank"].idxmin()
+    is_win = clustered.index.isin(winner_idx)
+    merged_motifs = (
+        clustered.loc[~is_win]
+        .groupby("cluster")["ReferenceMotif"]
+        .agg(list)
+        .rename("other_motifs")
+    )
 
-    # attach the full member list to each representative row
-    representative = representative.merge(merged_ids, on="cluster", how="left")
+    # attach the two additional merge info cols to the rep_df
+    rep_df = rep_df.merge(merged_ids, on="cluster", how="left")
+    rep_df = rep_df.merge(merged_motifs, on="cluster", how="left")
 
     # change start and end coords to cluster coords
-    representative[cols[1]] = representative["cluster_start"]
-    representative[cols[2]] = representative["cluster_end"]
+    rep_df[coord_cols[1]] = rep_df["cluster_start"]
+    rep_df[coord_cols[2]] = rep_df["cluster_end"]
 
-    print(representative.head)
-
-    dropped = clustered[~clustered.index.isin(
-        clustered.groupby("cluster")["_rank"].idxmin()
-    )]
-
+    # remove tiebeaker column from og df
     cdf.drop(columns=["_tiebreak"], inplace=True)
 
-    return representative.drop(columns=["cluster_start", "cluster_end", "_rank"]), dropped
+    # prep rep_df for return
+    rep_df = rep_df.drop(columns=["cluster_start", "cluster_end", "_rank"])
+    rep_df = moveColToEnd(rep_df, "cluster")
+
+    return rep_df
+
+
+def removeDupes(cdf):
+    clean_df = (
+        cdf.assign(_rank=cdf.apply(mergeKey, axis=1))
+            .sort_values(by="_rank", ascending=True)
+            .drop_duplicates(subset="ReferenceRegion", keep="first")
+            .sort_values("_orig_id")
+            .drop(columns=["_orig_id", "_rank"])
+    )
+
+    # double check to see if any duplicates remain
+    num_dupes_cleaned = clean_df[clean_df.duplicated(subset= ["ReferenceRegion"], keep=False)].shape[0]
+
+    if num_dupes_cleaned > 0:
+        print(f"WARNING {num_dupes_cleaned} duplicates still detected.")
+        sys.exit(1)
+
+    return clean_df
 
 
 def main():
@@ -132,8 +194,7 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument("cat_path", type=Path)
-    #parser = argparse.ArgumentParser()
-    #parser.add_argument("out_dir", type=Path)
+    parser.add_argument("out_dir", type=Path)
     parser.add_argument("--stat_only", 
                         action="store_true", 
                         default=False)
@@ -144,18 +205,22 @@ def main():
     parser.add_argument("--rem_dupes", 
                         action="store_true", 
                         default=False)
+    parser.add_argument("--no_merge", 
+                    action="store_true", 
+                    default=False)
 
     args = parser.parse_args()
     cat_path = args.cat_path
     stat_only = args.stat_only
     out_format = args.format
     rem_dupes = args.rem_dupes
-
+    no_merge = args.no_merge
+    out_dir = args.out_dir
 
     # format output path
-    suffix = cat_path.suffixes[-2:]
-    out_path = cat_path.parent / (Path(cat_path.stem).stem + "_ovlp-mrg" + suffix[0] + suffix[1])
-    out_cpy_path = cat_path.parent / (Path(cat_path.stem).stem + "_with_ids" + suffix[0] + suffix[1])
+    path_suffix = cat_path.suffixes[-2:]
+    out_base = out_dir / Path(cat_path.stem).stem
+    out_cpy_path = out_dir / (Path(cat_path.stem).stem + "_with-ids" + path_suffix[0] + path_suffix[1])
 
 
     # read in catalog data to pd dataframe
@@ -171,10 +236,10 @@ def main():
                                    "ReferenceRepeatPurity",
                                    "AlleleFrequenciesFromIllumina174k",
                                    ],
-                            engine="python" # had to use because the C parser was hitting an error in AlleleFrequenciesFromIllumina174k
+                            engine="python" # using because the C parser was hitting an error in AlleleFrequenciesFromIllumina174k
                           )
     in_shape = cat_df.shape
-    cat_df["_orig_id"] = range(len(cat_df)) # make explicit temp col to keep og order * unique row identifiers
+    cat_df["_orig_id"] = range(len(cat_df)) # make explicit temp col to keep og order/unique row identifiers
 
     # calculate overlaps
     print("Calculating stats...")
@@ -182,40 +247,29 @@ def main():
 
 
     if not stat_only:
-
+        
+        
         # handle exact DUPLICATES (not overlaps where 100% is contained within another)
         num_dupes = cat_df[cat_df.duplicated(subset= ["ReferenceRegion"], keep=False)].shape[0]
 
         if rem_dupes:
-            cat_df = (
-                cat_df.sort_values(
-                    by=["AlleleFrequenciesFromIllumina174k", "ReferenceRepeatPurity", "MotifSize"], 
-                    ascending=[False, False, True]
-                    )
-                    .drop_duplicates(subset="ReferenceRegion", keep="first") # keep highest order duplicate based on above values
-                    .sort_values("_orig_id") # ensure orignal ordering is held
-                    .drop(columns="_orig_id") # drop ordering column
-            )
+            cat_df = removeDupes(cat_df) # remove exact duplicates
 
-            # double check to see if any duplicates remain
-            num_dupes_cleaned = cat_df[cat_df.duplicated(subset= ["ReferenceRegion"], keep=False)].shape[0]
+        if not no_merge:
+            print("Running merge...")
+            clean_df = mergeOverlaps(cat_df) # handle overlaps by merging into single extended row
 
-            if num_dupes_cleaned > 0:
-                print(f"WARNING {num_dupes_cleaned} duplicates still detected.")
-                return 1
+            # output updated copy of input catalog with id column
+            cat_df[[*clean_df.columns[:3], "ReferenceMotif", "MotifSize", "_orig_id"]].to_csv(out_cpy_path, index=False, sep="\t", compression="gzip")
 
-        # handle overlaps
-        clean_df, drp_df = mergeOverlaps(cat_df)
-
-        # output using desired format
+        # output bed using desired format
         if out_format.lower() == "atarva":
-            out_shape = ToAtarva(clean_df, out_path)
-        else:
-            out_shape = clean_df.shape
-            clean_df.to_csv(out_path, index=False, sep="\t", compression="gzip")
+            at_path = Path(str(out_base) + "_mrgd" + "_atarva" + ".bed" + path_suffix[1])
+            out_shape = ToAtarva(clean_df, at_path)
 
-        # output updated copy of input catalog with id column
-        cat_df.to_csv(out_cpy_path, index=False, sep="\t", compression="gzip")
+        # output tsv containg extended merge info
+        out_path = Path(str(out_base) + "_mrgd" + "_with-info" + path_suffix[0] + path_suffix[1])
+        clean_df[[*clean_df.columns[:3], "ReferenceMotif", "MotifSize", "merged_from", "other_motifs"]].to_csv(out_path, index=False, sep="\t", compression="gzip")
 
 
     etime = time.perf_counter()
@@ -223,15 +277,14 @@ def main():
 
     print("---Program Complete---")
     print(f"Runtime                 : {rtime:.3}s")
-    print(f"Input size              : {in_shape}")
-    print(f"Output size             : {out_shape}")
+    print(f"Input rows              : {in_shape[0]}")
+    print(f"Output rows             : {out_shape[0]}")
     print(f"Duplicate regions found : {num_dupes}")
     print("Overlap bins            :")
     for label, count in stat_dict.items():
         print(f"    {label:<12}: {count}")
     if not stat_only:
-        print(f"Merged output path      : {out_path}")
-        print(f"Id updated output path  : {out_cpy_path}")
+        print(f"Output Dir     : {out_base.parent}")
 
 
 
