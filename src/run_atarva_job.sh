@@ -5,7 +5,7 @@ CRAM="${1:?CRAM required}"
 OUTPUT_VCF="${2:?Output VCF required}"
 
 REFERENCE="/pl/active/dashnowlab/data/ref-genomes/human_GRCh38_no_alt_analysis_set.fasta"
-CATALOG="/pl/active/dashnowlab/projects/TR-benchmarking/catalogs/benchmark-catalog-v2.atarva.bed.gz"
+CATALOG="/pl/active/dashnowlab/projects/1k_tr_paper/data/TRExplorer.repeat_catalog_v2.hg38.1_to_1000bp_motifs.atarva.bed.gz"
 ATARVA_ENV="/projects/ealiyev@xsede.org/software/anaconda/envs/atarva_0.7.1"
 
 module load miniforge
