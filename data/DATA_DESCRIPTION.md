@@ -11,7 +11,7 @@ and processed datasets used in the analyses.
 
 ## TR explorer catalog
 
-Latest release of [TRexplorer](https://trexplorer.broadinstitute.org/) catalog as of 9/16/2026 is downloaded. Converted to atarva input format using `../src/python/trx2atarva.py`.
+Latest [release v2.0](https://github.com/broadinstitute/trexplorer-catalog/releases/tag/v2.0) of [TRexplorer](https://trexplorer.broadinstitute.org/) catalog as of 9/16/2026 is downloaded. Converted to atarva input format using `../src/python/trx2atarva.py`.
 
 ```bash
 wget -c https://github.com/broadinstitute/trexplorer-catalog/releases/download/v2.0/TRExplorer.repeat_catalog_v2.hg38.1_to_1000bp_motifs.bed.gz
