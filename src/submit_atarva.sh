@@ -3,7 +3,7 @@ set -eo pipefail
 
 CRAM_LIST="${1:?Usage: $0 cram.list}"
 
-OUT="/pl/active/dashnowlab/work/ealiyev/Sandbox/HPRC_atarva_40k_merged/output"
+OUT="/pl/active/dashnowlab/projects/1k_tr_paper/data/1000g-output/"
 LOG="${OUT}/logs"
 RUN_SCRIPT="$(cd "$(dirname "$0")" && pwd)/run_atarva_job.sh"
 
@@ -29,7 +29,7 @@ while IFS= read -r CRAM; do
         --qos=cpu-normal \
         --cpus-per-task=8 \
         --mem=16G \
-        --time=24:00:00 \
+        --time=23:59:00 \
         --output="${LOG}/${SAMPLE}_%j.out" \
         --error="${LOG}/${SAMPLE}_%j.err" \
         "$RUN_SCRIPT" "$CRAM" "$VCF")
