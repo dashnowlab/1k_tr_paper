@@ -25,5 +25,5 @@ atarva genotype \
     --haplotag HP \
     --decompose \
     --strict \
-    --format cram \
+    --aln-format bam \
     -o "$OUTPUT_VCF"

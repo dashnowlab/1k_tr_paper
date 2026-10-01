@@ -28,7 +28,7 @@ while IFS= read -r CRAM; do
         -p acpu \
         --qos=cpu-normal \
         --cpus-per-task=8 \
-        --mem=16G \
+        --mem=32G \
         --time=23:59:00 \
         --output="${LOG}/${SAMPLE}_%j.out" \
         --error="${LOG}/${SAMPLE}_%j.err" \
