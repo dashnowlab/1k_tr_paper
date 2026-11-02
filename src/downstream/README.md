@@ -2,7 +2,8 @@
 
 `cn_lps_stats_atarva.py` reads an ATaRVa merged VCF once and writes one
 extended per-locus table containing CN statistics, DS-derived LPS statistics,
-CN/LPS comparisons, genotype summaries, HWE, depth, and allele-balance QC.
+CN/LPS comparisons, coefficient of variation for both measurements, genotype
+summaries, HWE, depth, and allele-balance QC.
 
 ## Requirements
 

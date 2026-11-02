@@ -20,6 +20,8 @@ samples, as their denominator.
 - Percentiles use NumPy's default linear interpolation (Hyndman-Fan type 7).
 - Variance and standard deviation describe the observed allele population and
   therefore use `ddof=0` (division by N).
+- Coefficient of variation is the unitless population standard deviation
+  divided by the arithmetic mean. It is missing (`.`) when the mean is zero.
 - A tied mode is resolved to the smallest allele length.
 - Heterozygosity is `1 - sum(p_i^2)`.
 - Entropy is Shannon entropy in bits: `-sum(p_i * log2(p_i))`.

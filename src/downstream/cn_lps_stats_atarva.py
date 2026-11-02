@@ -37,10 +37,10 @@ LOCUS_COLUMNS = [
 
 SUMMARY_SUFFIXES = [
     "min", "median", "mean", "99th_percentile", "max", "range", "variance",
-    "stdev", "iqr", "mode", "unique_allele_lengths", "total_genotyped_alleles",
-    "allele_histogram", "major_allele_frequency", "effective_allele_count",
-    "heterozygosity", "entropy", "singleton_allele_count", "rare_allele_count",
-    "rare_allele_fraction",
+    "stdev", "coefficient_of_variation", "iqr", "mode", "unique_allele_lengths",
+    "total_genotyped_alleles", "allele_histogram", "major_allele_frequency",
+    "effective_allele_count", "heterozygosity", "entropy",
+    "singleton_allele_count", "rare_allele_count", "rare_allele_fraction",
 ]
 
 CN_REFERENCE_COLUMNS = [
@@ -131,7 +131,7 @@ def _distribution_summary(
     values: Sequence[float], rare_threshold: float
 ) -> list[str]:
     if not values:
-        return [".", ".", ".", ".", ".", ".", ".", ".", ".", ".",
+        return [".", ".", ".", ".", ".", ".", ".", ".", ".", ".", ".",
                 "0", "0", ".", ".", ".", ".", ".", "0", "0", "."]
     array = np.asarray(values, dtype=float)
     counts = Counter(values)
@@ -144,15 +144,18 @@ def _distribution_summary(
     effective = 1.0 / sum(frequency**2 for frequency in frequencies.values())
     rare_count = sum(count for value, count in counts.items() if frequencies[value] < rare_threshold)
     q25, q75 = np.percentile(array, [25, 75])
+    mean = float(np.mean(array))
+    stdev = float(np.std(array, ddof=0))
     return [
         _fmt(float(np.min(array))),
         _fmt(float(np.median(array))),
-        _fmt(float(np.mean(array))),
+        _fmt(mean),
         _fmt(float(np.percentile(array, 99))),
         _fmt(float(np.max(array))),
         _fmt(float(np.max(array) - np.min(array))),
         _fmt(float(np.var(array, ddof=0))),
-        _fmt(float(np.std(array, ddof=0))),
+        _fmt(stdev),
+        _fmt(stdev / mean) if mean != 0 else ".",
         _fmt(float(q75 - q25)),
         _fmt(float(mode)),
         str(len(counts)),

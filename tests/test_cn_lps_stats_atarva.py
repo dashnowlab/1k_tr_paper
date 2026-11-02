@@ -93,6 +93,7 @@ class TestDistributionStatistics(unittest.TestCase):
             "range": 3.0,
             "variance": 1.5,
             "stdev": math.sqrt(1.5),
+            "coefficient_of_variation": math.sqrt(1.5) / 2.0,
             "iqr": 1.5,
             "mode": 1.0,
             "major_allele_frequency": 0.5,
@@ -125,6 +126,13 @@ class TestDistributionStatistics(unittest.TestCase):
         self.assertEqual(result["unique_allele_lengths"], "0")
         self.assertEqual(result["allele_histogram"], ".")
         self.assertEqual(result["mean"], ".")
+
+    def test_coefficient_of_variation_is_undefined_at_zero_mean(self) -> None:
+        result = as_mapping(
+            stats.SUMMARY_SUFFIXES,
+            stats._distribution_summary([0, 0], rare_threshold=0.01),
+        )
+        self.assertEqual(result["coefficient_of_variation"], ".")
 
     def test_reference_relative_statistics(self) -> None:
         result = as_mapping(
@@ -227,8 +235,8 @@ class TestFullOutputAudit(unittest.TestCase):
 
     def test_shape_and_unique_columns(self) -> None:
         self.assertEqual(len(self.rows), 9_778)
-        self.assertEqual(len(self.fieldnames), 97)
-        self.assertEqual(len(set(self.fieldnames)), 97)
+        self.assertEqual(len(self.fieldnames), 99)
+        self.assertEqual(len(set(self.fieldnames)), 99)
         self.assertEqual(self.fieldnames, stats.OUTPUT_COLUMNS)
 
     def test_all_row_accounting_and_partitions(self) -> None:
@@ -335,6 +343,16 @@ class TestFullOutputAudit(unittest.TestCase):
                         self.assertAlmostEqual(
                             float(row[f"{prefix}_{suffix}"]), expected_value,
                             delta=tolerance, msg=f"row {row_index} {prefix}_{suffix}",
+                        )
+                    mean_value = statistics.fmean(values)
+                    if mean_value == 0:
+                        self.assertEqual(row[f"{prefix}_coefficient_of_variation"], ".")
+                    else:
+                        self.assertAlmostEqual(
+                            float(row[f"{prefix}_coefficient_of_variation"]),
+                            statistics.pstdev(values) / mean_value,
+                            delta=tolerance,
+                            msg=f"row {row_index} {prefix}_coefficient_of_variation",
                         )
                     singleton_types = sum(count == 1 for count in counts.values())
                     rare_observations = sum(
