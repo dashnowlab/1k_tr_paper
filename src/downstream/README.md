@@ -9,13 +9,12 @@ summaries, HWE, depth, and allele-balance QC.
 
 - Python 3.10 or newer
 - NumPy
-- SciPy (only required for the scientific test suite)
 
 From PowerShell, install the Python dependencies if they are not already
 available:
 
 ```powershell
-python -m pip install numpy scipy
+python -m pip install numpy
 ```
 
 ## Run from the repository root
@@ -95,18 +94,6 @@ The terminal summary reports the number of processed loci, called alleles, CN
 measurements, LPS measurements, and repaired phantom-LPM schemas. A successful
 run exits with code zero.
 
-## Run the scientific tests
-
-From the repository root:
-
-```powershell
-python -m unittest tests/test_cn_lps_stats_atarva.py -v
-```
-
-The tests include known-answer unit cases and a full audit of the generated
-9,778-locus output when the VCF and output files are present. Tests that require
-those large ignored files are skipped automatically when the files are absent.
-
 ## Input assumptions
 
 The input must be an ATaRVa VCF with sample-level `GT`, `CN`, `DS`, `DP`, and
@@ -119,3 +106,28 @@ except that a called complete deletion with CN zero receives LPS zero.
 
 See [cn_lps_stats_atarva.md](cn_lps_stats_atarva.md) for formulas, denominators,
 HWE interpretation, and scientific limitations.
+
+## Repair records joined by missing newlines
+
+If a malformed merged VCF contains two or more records joined on one physical
+line, scan the entire file without writing output:
+
+```powershell
+python .\src\downstream\repair_joined_vcf_records.py `
+  --input ".\data\1000g_output\1000g_ont_test.vcf" `
+  --check-only
+```
+
+Create a validated repaired copy:
+
+```powershell
+python .\src\downstream\repair_joined_vcf_records.py `
+  --input ".\data\1000g_output\1000g_ont_test.vcf" `
+  --output ".\data\1000g_output\1000g_ont_test.fixed.vcf"
+```
+
+The repair utility derives the expected width from the VCF header, fixes every
+unambiguous missing-newline join, normalizes trailing empty fields, and validates
+all records. It writes through a temporary file, never overwrites an existing
+output, and removes the temporary output if any record cannot be repaired
+safely.

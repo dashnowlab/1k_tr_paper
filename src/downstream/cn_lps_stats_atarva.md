@@ -60,17 +60,3 @@ carefully.
   `[0.2, 0.8]`; values exactly on either boundary are not outliers.
 - `lps_exceeds_cn_count` is retained as a diagnostic inconsistency count. An
   LPS longer than total CN is biologically unexpected and should be inspected.
-
-## Reproducible tests
-
-From the repository root, run:
-
-```powershell
-python -m unittest tests/test_cn_lps_stats_atarva.py -v
-```
-
-The suite checks known-answer unit cases, motif rotations and interruptions,
-partial and compressed genotypes, phantom-LPM schema repair, SciPy agreement
-for binomial p-values, every distribution reconstructed independently from the
-full output histograms, row-level accounting invariants, VCF metadata alignment,
-and agreement with the previous standalone CN and LPS tables.
