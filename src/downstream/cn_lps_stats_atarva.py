@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import math
 import os
+import re
 import sys
 import time
 from collections import Counter
@@ -104,6 +105,15 @@ class LocusData:
     diploid_cn_genotypes: list[tuple[float, float]]
     depths: list[float]
     allele_balances: list[float]
+
+
+@dataclass
+class MissingMotifLocus:
+    chrom: str
+    start: int
+    end: int
+    locus_id: str
+    motif: str
 
 
 def _warn(message: str) -> None:
@@ -393,6 +403,50 @@ def _parse_locus(
     ), repaired
 
 
+def _parse_info_dot_locus(
+    raw_fields: Sequence[str], line_number: int, sample_count: int
+) -> Optional[MissingMotifLocus]:
+    """Parse the identity fields for the special all-missing INFO=. records."""
+    expected_columns = 9 + sample_count
+    fields = list(raw_fields)
+    while len(fields) > expected_columns and fields[-1] == "":
+        fields.pop()
+    if len(fields) != expected_columns:
+        raise ValueError(
+            f"line {line_number}: expected {expected_columns} columns, found {len(fields)}"
+        )
+
+    chrom, _pos, record_id, _ref, _alt, _qual, _filter, info_text = fields[:8]
+    if info_text != ".":
+        return None
+    if record_id in {"", "."}:
+        raise ValueError(
+            f"line {line_number}: INFO=. record has no VCF ID from which to extract "
+            "start, end and motif"
+        )
+
+    match = re.fullmatch(r"(.+)-(\d+)-(\d+)-([A-Za-z]+)", record_id)
+    if match is None:
+        raise ValueError(
+            f"line {line_number}: cannot extract chrom-start-end-motif from "
+            f"VCF ID {record_id!r} for INFO=. record"
+        )
+    id_chrom, start_text, end_text, motif = match.groups()
+    if id_chrom != chrom:
+        raise ValueError(
+            f"line {line_number}: VCF ID chromosome {id_chrom!r} does not match "
+            f"CHROM {chrom!r} for INFO=. record"
+        )
+    start = int(start_text)
+    end = int(end_text)
+    if end < start:
+        raise ValueError(
+            f"line {line_number}: VCF ID end {end} precedes start {start} "
+            "for INFO=. record"
+        )
+    return MissingMotifLocus(chrom, start, end, record_id, motif.upper())
+
+
 def _qc_fields(data: LocusData, args: argparse.Namespace, total_samples: int) -> list[str]:
     genotype_denominator = data.homozygous_samples + data.heterozygous_samples
     low_depth = sum(depth < args.low_depth_threshold for depth in data.depths)
@@ -452,6 +506,21 @@ def _write_locus(output: TextIO, data: LocusData, args: argparse.Namespace, tota
     output.write("\t".join(row) + "\n")
 
 
+def _write_missing_motif_locus(output: TextIO, data: MissingMotifLocus) -> None:
+    row = [
+        data.chrom,
+        str(data.start),
+        str(data.end),
+        data.locus_id,
+        data.motif,
+        str(len(data.motif)),
+        "NA",
+    ]
+    row.extend(["NA"] * (len(OUTPUT_COLUMNS) - len(row)))
+    row[OUTPUT_COLUMNS.index("lps_status")] = "missing_motif"
+    output.write("\t".join(row) + "\n")
+
+
 def getargs(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--vcf", required=True, help="Input ATaRVa merged VCF")
@@ -484,7 +553,7 @@ def main(args: argparse.Namespace) -> int:
         _warn(f"output directory {output_directory} does not exist")
         return 1
 
-    processed = repairs = total_called = total_cn = total_lps = 0
+    processed = repairs = missing_motif_records = total_called = total_cn = total_lps = 0
     start_time = time.time()
     try:
         with open(args.vcf, encoding="utf-8") as input_handle:
@@ -495,6 +564,17 @@ def main(args: argparse.Namespace) -> int:
                 for line_number, fields in records:
                     if args.numrecords is not None and processed >= args.numrecords:
                         break
+                    missing_motif = _parse_info_dot_locus(fields, line_number, len(samples))
+                    if missing_motif is not None:
+                        _warn(
+                            f"line {line_number}: INFO=. record retained with "
+                            f"lps_status=missing_motif; statistics set to NA "
+                            f"(locus_id={missing_motif.locus_id})"
+                        )
+                        _write_missing_motif_locus(output_handle, missing_motif)
+                        processed += 1
+                        missing_motif_records += 1
+                        continue
                     data, repaired = _parse_locus(
                         fields, line_number, samples, sample_indexes, declared_formats
                     )
@@ -519,6 +599,7 @@ def main(args: argparse.Namespace) -> int:
     print(
         f"Processed {processed:,} loci and {total_called:,} called alleles in {elapsed:.2f}s. "
         f"Measured CN for {total_cn:,} and LPS for {total_lps:,} alleles; "
+        f"retained {missing_motif_records:,} INFO=. missing-motif records; "
         f"repaired {repairs:,} phantom-LPM schemas. Output: {output_path}"
     )
     return 0
