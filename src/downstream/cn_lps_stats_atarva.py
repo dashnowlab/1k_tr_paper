@@ -114,6 +114,7 @@ class MissingMotifLocus:
     end: int
     locus_id: str
     motif: str
+    reason: str
 
 
 def _warn(message: str) -> None:
@@ -403,10 +404,10 @@ def _parse_locus(
     ), repaired
 
 
-def _parse_info_dot_locus(
+def _parse_missing_motif_locus(
     raw_fields: Sequence[str], line_number: int, sample_count: int
 ) -> Optional[MissingMotifLocus]:
-    """Parse the identity fields for the special all-missing INFO=. records."""
+    """Parse supported no-call records whose INFO/MOTIF is unavailable."""
     expected_columns = 9 + sample_count
     fields = list(raw_fields)
     while len(fields) > expected_columns and fields[-1] == "":
@@ -416,35 +417,57 @@ def _parse_info_dot_locus(
             f"line {line_number}: expected {expected_columns} columns, found {len(fields)}"
         )
 
-    chrom, _pos, record_id, _ref, _alt, _qual, _filter, info_text = fields[:8]
-    if info_text != ".":
+    chrom, _pos, record_id, ref, _alt, _qual, _filter, info_text, format_text = fields[:9]
+    if info_text == ".":
+        identity_text = record_id
+        reason = "INFO=."
+    elif (
+        record_id in {"", "."}
+        and info_text == format_text
+        and "GT" in format_text.split(":")
+    ):
+        nonmissing_samples = [
+            sample_index
+            for sample_index, sample_text in enumerate(fields[9:], 1)
+            if sample_text.split(":", 1)[0] not in {"", ".", "./.", ".|."}
+        ]
+        if nonmissing_samples:
+            raise ValueError(
+                f"line {line_number}: INFO duplicates FORMAT but "
+                f"{len(nonmissing_samples)} sample genotype(s) are not fully missing"
+            )
+        identity_text = ref
+        reason = "INFO duplicates FORMAT"
+    else:
         return None
-    if record_id in {"", "."}:
+    if identity_text in {"", "."}:
         raise ValueError(
-            f"line {line_number}: INFO=. record has no VCF ID from which to extract "
+            f"line {line_number}: {reason} record has no locus identifier from which to extract "
             "start, end and motif"
         )
 
-    match = re.fullmatch(r"(.+)-(\d+)-(\d+)-([A-Za-z]+)", record_id)
+    match = re.fullmatch(r"(.+)-(\d+)-(\d+)-([A-Za-z]+)", identity_text)
     if match is None:
         raise ValueError(
             f"line {line_number}: cannot extract chrom-start-end-motif from "
-            f"VCF ID {record_id!r} for INFO=. record"
+            f"locus identifier {identity_text!r} for {reason} record"
         )
     id_chrom, start_text, end_text, motif = match.groups()
     if id_chrom != chrom:
         raise ValueError(
-            f"line {line_number}: VCF ID chromosome {id_chrom!r} does not match "
-            f"CHROM {chrom!r} for INFO=. record"
+            f"line {line_number}: locus identifier chromosome {id_chrom!r} does not match "
+            f"CHROM {chrom!r} for {reason} record"
         )
     start = int(start_text)
     end = int(end_text)
     if end < start:
         raise ValueError(
-            f"line {line_number}: VCF ID end {end} precedes start {start} "
-            "for INFO=. record"
+            f"line {line_number}: locus identifier end {end} precedes start {start} "
+            f"for {reason} record"
         )
-    return MissingMotifLocus(chrom, start, end, record_id, motif.upper())
+    return MissingMotifLocus(
+        chrom, start, end, identity_text, motif.upper(), reason
+    )
 
 
 def _qc_fields(data: LocusData, args: argparse.Namespace, total_samples: int) -> list[str]:
@@ -564,10 +587,12 @@ def main(args: argparse.Namespace) -> int:
                 for line_number, fields in records:
                     if args.numrecords is not None and processed >= args.numrecords:
                         break
-                    missing_motif = _parse_info_dot_locus(fields, line_number, len(samples))
+                    missing_motif = _parse_missing_motif_locus(
+                        fields, line_number, len(samples)
+                    )
                     if missing_motif is not None:
                         _warn(
-                            f"line {line_number}: INFO=. record retained with "
+                            f"line {line_number}: {missing_motif.reason} record retained with "
                             f"lps_status=missing_motif; statistics set to NA "
                             f"(locus_id={missing_motif.locus_id})"
                         )
@@ -599,7 +624,7 @@ def main(args: argparse.Namespace) -> int:
     print(
         f"Processed {processed:,} loci and {total_called:,} called alleles in {elapsed:.2f}s. "
         f"Measured CN for {total_cn:,} and LPS for {total_lps:,} alleles; "
-        f"retained {missing_motif_records:,} INFO=. missing-motif records; "
+        f"retained {missing_motif_records:,} supported missing-motif records; "
         f"repaired {repairs:,} phantom-LPM schemas. Output: {output_path}"
     )
     return 0
